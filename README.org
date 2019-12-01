@@ -1,0 +1,158 @@
+** Toolchain overview
+
+   Writing a modern native program involves at the bare minimum three major tools in your toolchain.
+
+   1. The compiler itself (of course) 
+   2. A build system
+   3. A package manager
+
+   #+begin_comment
+   It's important that we take note of the *modern* bit -
+   historically, native software written in C/C++ have never really
+   used another tool like npm/go-get/cargo to pull in packages and
+   manage them - a tool we have taken for granted in higher level
+   languages like JS, Golang or Rust. Notice how popular natively
+   compiled applications like Chromium, Firefox etc have a folders
+   like third_party/vendor etc where they keep a copy of packages
+   developed by someone else. One can probably co-relate how wide
+   spread the practise of distributing and sharing C/C++ code wasn't
+   prevalent like it is in say the Javascript community - need a piece
+   of code to add some extra spaces to the left, use left pad! Merits
+   of this practise in the software community is highly debated, but
+   let's not get distracted. The point is that this practise of
+   publishing and consuming small pieces of code wasn't
+   widespread. The need for a package manager was felt only after the
+   practise of sharing and distributing code rapidly became prevalent
+   #+end_comment
+
+   With these three major tools, a parallel set of terms into to
+   picture as well
+
+   1. Object files
+   2. Libraries
+   3. Packages
+   
+   I like to associate each tool's utility by the necessity that was
+   created.
+
+   Compiler's turn source files into object code - which is basically
+   binary instructions that the host understand chunked into
+   segments. (More info: [[herhttps://en.wikipedia.org/wiki/Object_file#Segmentation][here)]]. It is often thought that compilers
+   themselves executable files, but they don't. Compiler only create
+   object files. Linkers open up these object files, read relocation
+   information, piece undefined symbols together and generate the
+   final executable the operating system can actually load. In the
+   grand scheme of things, we rarely have to worry about these as no
+   compiler (to my knowledge) manually makes you link object files -
+   compilers conveniently call the host's linkers itself.
+
+   But most of the time, we like to break down our code into source
+   files as per our convenience - for readability, coherence etc. This
+   means, even if the end goal of your project was to create just one
+   library - say an HTTP library that someone can just import and use,
+   as developers we tend to spread out our code into multiple
+   logically separated source files. Compilers transform them into
+   their corresponding object files. There finally is a need to
+   somehow bundle them together again as one unit (because the entire
+   unit is what makes sense). Behind the scenes, our compiler (say
+   gcc, clang, ocamlopt) also calls an archiver like tool to club them
+   together. These are library files. One can argue - why not simply
+   avoid dumping individual object files and straight away create
+   library files? Incrementality - we rarely every all the files in
+   our codebase at once. Some source files never really need to
+   recompile!
+
+   To put it more concretely, let's take C as an example, then
+   toolchain (one of the options) looks like
+   
+   - gcc (compiler)
+   - ar  (archiver)
+   - ld (linker)
+
+   
+** Build systems
+
+   The point about incrementality plays a key role why build systems
+   exist, but their purpose can be explained from another point of
+   view - a sillier one. Terseness.
+
+   A project could have many source files. To build the library, we'd
+   have to issue multiple commands. Eg:
+
+   #+BEGIN_SRC bash
+   gcc -c file-1.c # compile to object code
+   gcc -c file-2.c # compile to object code
+   ar rcs libsome_util_lib.a file-1.o file-2.o # link to a library (static)
+
+   gcc -c file-3.c
+   gcc -o -L. -lsome_util_lib file-3.o -o output_binary # link to executable
+   #+END_SRC
+
+   In the interest of brevity, quick explanation provided in the
+   comments. Feel free to reach out to me (on Twitter DM for
+   instance). But, besides the fact that the commands compile and link
+   artifacts,
+
+   1. There is no way to encode the fact that if file-1.c changes,
+      it's dependent artifacts, file-1.a, libsome_util_lib.a,
+      output_binary must all be re-computed. ie. the transitive
+      closure of all it's dependent artifacts must be recompiled.
+
+   2. Verbose syntax - why not have something like
+
+      #+begin_src python
+        libsome_util_lib = static_library('libsome_util_lib', 'file-1.c', 'file-2.c')
+        output_binary = executable('output_bin', 'file-3.c', link_with: libsome_util_lib)
+      #+end_src
+
+     Clearly expresses what artifacts depend on what as opposed to
+     imperatively asking what compiler commands.
+
+     That was the Meson build system. C/C++ can be built with CMake and
+     Autotools too. OCaml can be build with ocamlbuild, oasis, best
+     of all Dune!
+
+     Build systems let you
+
+      1. Declare the dependency graph between artifacts so that we can
+         efficiently recompile only what we need to
+
+      2. Provide syntactic conveniences, shortcuts and expressivity
+
+         
+   Fun fact: if you are familiar with Turing completedness of a
+   language, an popular recommendation is that build system languages
+   never be Turing complete. [[https://taint.org/2011/02/18/001527a.html][More over here]] TLDR; Not needing a full
+   blow runtime and deterministic termination.
+
+   
+
+   
+
+
+** Library v/s Package
+
+
+
+
+
+** C is important: packages
+
+   For quite a while, C is not going anywhere.
+
+   # Explain FFI - how every languages provides one. Marshalling of
+   # data structures to and fro from language runtime
+   # realms. LIBC. (go provides it own). libffi. pkg-config. How
+   # native packages have to be vendored. Mention
+   # autoconf. cmake. meson. Explain how esy can make life easier for
+   # developing C
+
+** make/autoconf
+
+** Build environments
+
+** Build systems
+
+** C is important, again: FFI
+
+** Packaging c libraries with esy
