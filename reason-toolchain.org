@@ -1,0 +1,177 @@
+** Reason Toolchain
+
+    Let's take a good look at what goes into building native software.
+
+    1. Compiler
+    2. Binutils tools (archivers, linkers etc)
+    3. Library discovery
+    4. Build tools
+    5. Package management
+    6. Distribution      
+    To put things in context, we'll look at what it is like to do this
+    traditionally with C. Feel free to skip right ahead to [[how
+    Reason deals with all this][#reason-toolchain]]
+
+    As a newcomer, you'd probably ask for the compiler to try out some
+    hello world style programs. If this were C, you'd be looking for
+    =gcc=, =clang=, =cc= or =cl= - one of the compiler
+    implementations. 
+
+
+    #+BEGIN_SRC sh
+    gcc -o hello.exe hello.c
+    #+END_SRC
+    
+    
+    In Reason, =ocamlopt= compiles your Reason code together with
+    Reason's parser =refmt=
+
+    #+BEGIN_SRC sh
+    ocamlopt -pp 'refmt --print binary' -o hello.exe -impl hello.re 
+    #+END_SRC
+
+
+    But once some one is past basic programming, they're going to ask
+    for pulling in simple libraries and hack together something fun
+    with it. A number of tools go into this process of creating
+    reliable working binary.
+
+    
+**** Bin Tools
+
+     This is a plethora of tools that take object code from the compiler
+     and turn into a executable binary or a library that can be
+     consumed by someone else.
+
+     In C, this would be linkers, archivers etc that compilers usually run on your behalf. In Reason/OCaml,
+     =ocamlopt= takes care of creating the object files (cmo/cmxo) and the
+     archive files (cma/cmxa), but uses the underlying C compiler
+     installed in the system to link togther the final executable or
+     the archive file.
+
+**** Library management and discovery
+
+     Assuming that you are writing a library, these library files
+     (archive of object files) must be installed at a location
+     everyone can agree upon. Why? So that the consumer of your
+     library can link to it in their application. 
+
+     NodeJS follows a simple convention of putting libraries in
+     =node_modules= C libraries are usually installed in =/usr/lib= or
+     =/usr/local/lib=
+
+     But for a number of reasons, you may not want to place to files
+     in those locations. This is why, this common understanding
+     of where libraries go are actually written down as library
+     management and discovery tools so that developers can simply
+     provide some config and the tool correctly install the library
+     files and while consumption, helps the developer on the consuming
+     end find them reliably.
+
+     In C, this would be =pkg-config=. In Reason/OCaml, currently this
+     is =ocamlfind=
+
+     #+BEGIN_SRC sh
+
+     pkgconfig --cflags skia.pc
+     # -lskia -L /usr/local/lib/
+     
+     ocamlfind query unix
+     # ~/.opam/4.09.1/lib/ocaml
+     
+     #+END_SRC
+     
+**** Build tools
+
+     Compiling a library or an executable needs the right set of flags
+     and this can quickly get repetitive. Moreover, it would be ideal
+     to not recompute intermediate libraries and binaries (artifacts)
+     each time we try to build our project unnecessarily.
+
+     In C, this is solved with Meson, CMake or Gnu Make. We can
+     compare these tools to bundlers like Webpack, Parcel etc in the
+     JS world. Reason/OCaml has Dune.
+
+     
+**** Package and dependency management
+
+     A package manager needs no introduction - it's an essential tool
+     that helps us fetch libraries and tools written by others from a
+     central repository (certain package managers support
+     decentralised sources too) and help us jump between versions as
+     per our needs.
+
+     C world doesn't have a single package manager every one agrees
+     on. Historically, the system's package manager (homebrew,
+     apt-get,yum, pacman) take over the responsibility of installing
+     the libraries and headers. JS has NPM, Yarn and
+     others.
+
+**** Distribution
+
+     It should be possible to reliably distribute finished libraries
+     and executables. Native development has the following challenges
+     when it comes to distribution
+
+     1. Cross platform - artifacts need to be compiled for multiple
+        architectures, operating systems, ABIs etc
+     2. Target machine must have all the dependencies
+     3. If distributed in source form (as encouraged by homebrew,
+        gentoo etc), the build process must be completely reproucible.
+	(Tangential point: reproducibility also plays a crucial role
+        in ensuring new contributors are able to successfully able
+        setup the project)
+
+	
+     This is one aspect of native development that is poorly
+     handled. Currently, Docker is the probably the most popular tool
+     to setup projects and distribute them. 
+
+     We think the Reason community can do better.
+
+
+*** The Reason toolchain
+
+    Since, Reason leverages OCaml's tools, compilation, build tools
+    and library discovery is already taken care of. It's package
+    management and distribution where we think users can benefit from
+    new tools.
+
+    This is where esy and it complimentary half pesy comes in!
+
+    Our approach can be summarised as follows
+
+    1. We consider bundling the correct set of tools ie bootstrapping
+       and getting started with a new project, closely tied to the
+       generation of multi platform artifacts - a tool to generate a
+       manifest file containing tried and tested set of tools. These
+       are, ofcourse, all of the tools mentioned above and in addition
+       the language analyser tools like Reason Language Server, Merlin
+       (ocamllsp), Javascript backends.
+
+    2. We believe the exact configuration and specs (version of
+       compiler, environment variables in the build and runtime
+       environment etc) of these bundled tools play a vital role in
+       the generation of the final artifacts and must be run in a
+       clean, predictable and isolated environment. Building in
+       isolation safeguards against rapid changes in the compiler
+       (which are necessary to be fair!)
+
+    3. Configuration driving the build tool can be in JSON with
+       familiar conventions. This can help us with
+       
+       a. Reducing boiler plate to create artifacts
+       b. Drive installer/package generation (brew/choco/deb)
+       c. Install multiple versions of package in the same isolated
+       environment (to be explored)
+    
+
+   This exactly describes the motivations behind esy!
+
+   Ordinarily, developers trying out a new language are asked to
+   install the compiler. With Reason, we'd ask them to install the
+   package manager first - that's how key esy is to the Reason!
+
+   Lately, we have been working on making exposing convenient low
+   level plumbing to external tools - and pesy builds interesting
+   features around such commands.
